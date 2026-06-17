@@ -1,40 +1,622 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galeria de placas de vídeo</title>
-    <h1>Galeria das placas de vídeo</h1> 
-    <style> 
-        .img {
-            width: 400px;
+    <title>Galeria de Placas de Vídeo - GPU Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-                .voltar {
-            display: inline-block;
-            margin-top: 30px;
-            color: #22282c;
+        :root {
+            --nvidia: #76b900;
+            --amd: #ed1c24;
+            --intel: #0071c5;
+            --dark: #0f1117;
+            --dark2: #1a1d27;
+            --dark3: #22263a;
+            --text: #e8eaf0;
+            --text-muted: #8b90a7;
+            --card-bg: #1a1d27;
+            --border: rgba(255,255,255,0.07);
+            --radius: 12px;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--dark); }
+        ::-webkit-scrollbar-thumb { background: var(--dark3); border-radius: 3px; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        @keyframes fadeDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes glow {
+            0%, 100% { text-shadow: 0 0 10px rgba(255,255,255,0.1); }
+            50%       { text-shadow: 0 0 25px rgba(255,255,255,0.3); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50%       { transform: scale(1.04); }
+        }
+
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(15,17,23,0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 62px;
+            animation: fadeDown 0.5s ease;
+        }
+
+        .nav-logo {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--text);
             text-decoration: none;
-            font-weight: bold;
+        }
+
+        .nav-logo span { color: var(--nvidia); }
+
+        .nav-links {
+            display: flex;
+            gap: 0.25rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            display: block;
+            padding: 6px 14px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .nav-links a:hover { background: var(--dark3); color: var(--text); }
+        .nav-links a.nvidia { color: var(--nvidia); }
+        .nav-links a.amd    { color: var(--amd); }
+        .nav-links a.intel  { color: var(--intel); }
+
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 6px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .hamburger:hover { background: var(--dark3); }
+
+        .hamburger span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--text);
+            border-radius: 2px;
+            transition: transform 0.35s ease, opacity 0.35s ease;
+        }
+
+        .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+        .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+        .mobile-menu {
+            display: none;
+            flex-direction: column;
+            position: fixed;
+            top: 62px;
+            left: 0;
+            width: 100%;
+            background: rgba(15,17,23,0.97);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem 1.5rem;
+            gap: 0.25rem;
+            z-index: 999;
+        }
+
+        .mobile-menu.open {
+            display: flex;
+            animation: fadeDown 0.3s ease;
+        }
+
+        .mobile-menu a {
+            padding: 10px 14px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .mobile-menu a:hover { background: var(--dark3); color: var(--text); }
+        .mobile-menu a.nvidia { color: var(--nvidia); }
+        .mobile-menu a.amd    { color: var(--amd); }
+        .mobile-menu a.intel  { color: var(--intel); }
+
+        .mobile-menu .separator {
+            height: 1px;
+            background: var(--border);
+            margin: 0.5rem 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 1.5rem 4rem;
+        }
+
+        .page-header {
+            padding: 3rem 2rem 2rem;
+            animation: fadeUp 0.7s ease;
+            text-align: center;
+        }
+
+        .page-header h1 {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1.15;
+            color: var(--text);
+        }
+
+        .page-header h1 span {
+            background: linear-gradient(135deg, #76b900, #a3e635);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-header p {
+            margin-top: 0.5rem;
+            color: var(--text-muted);
+            font-size: 1.05rem;
+        }
+
+        .filter-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+            animation: fadeUp 0.6s ease both;
+        }
+
+        .filter-tabs button {
+            padding: 0.5rem 1.5rem;
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            background: transparent;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s;
+        }
+
+        .filter-tabs button:hover {
+            background: var(--dark3);
+            color: var(--text);
+            transform: translateY(-2px);
+        }
+
+        .filter-tabs button.active {
+            background: var(--dark3);
+            color: var(--text);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .filter-tabs button.filter-all.active { border-color: var(--text); }
+        .filter-tabs button.filter-nvidia.active { border-color: var(--nvidia); color: var(--nvidia); }
+        .filter-tabs button.filter-amd.active { border-color: var(--amd); color: var(--amd); }
+        .filter-tabs button.filter-intel.active { border-color: var(--intel); color: var(--intel); }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            animation: fadeUp 0.7s ease both;
+        }
+
+        .gallery-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+            animation: zoomIn 0.5s ease both;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-6px);
+            border-color: rgba(255,255,255,0.15);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.4s;
+        }
+
+        .gallery-item:hover img {
+            transform: scale(1.04);
+        }
+
+        .gallery-item .info {
+            padding: 0.8rem 1rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gallery-item .info .name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text);
+        }
+
+        .gallery-item .info .badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 0.2rem 0.7rem;
+            border-radius: 20px;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-nvidia { background: var(--nvidia); color: #fff; }
+        .badge-amd    { background: var(--amd); color: #fff; }
+        .badge-intel  { background: var(--intel); color: #fff; }
+
+        /* ── SEM RESULTADOS ── */
+        .no-results {
+            display: none;
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            grid-column: 1 / -1;
+        }
+
+        .no-results.show {
+            display: block;
+        }
+
+        .counter {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .counter strong { color: var(--text); }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+            margin-top: 2.5rem;
+            text-align: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .back-link:hover { color: var(--text); }
+        .back-link::before { content: '←'; font-size: 1.1rem; }
+
+        footer {
+            text-align: center;
+            padding: 2.5rem 1.5rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            line-height: 1.9;
+        }
+
+        footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s;
+            margin: 0 0.5rem;
+        }
+
+        footer a:hover { color: var(--text); }
+
+        @media (max-width: 640px) {
+            nav { padding: 0 1.25rem; }
+            .nav-links { display: none; }
+            .hamburger { display: flex; }
+
+            .page-header { padding: 2rem 1.25rem 1.5rem; }
+
+            .container { padding: 0 1rem 3rem; }
+
+            .gallery-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                gap: 1rem;
+            }
+
+            .gallery-item img {
+                height: 160px;
+            }
+
+            .gallery-item .info {
+                flex-direction: column;
+                gap: 0.3rem;
+                text-align: center;
+                padding: 0.6rem 0.8rem 0.8rem;
+            }
+
+            .filter-tabs button {
+                padding: 0.4rem 1rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .gallery-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 0.75rem;
+            }
+
+            .gallery-item img {
+                height: 130px;
+            }
+
+            .gallery-item .info .name {
+                font-size: 0.8rem;
+            }
+
+            .gallery-item .info .badge {
+                font-size: 0.6rem;
+                padding: 0.1rem 0.5rem;
+            }
         }
     </style>
 </head>
-
 <body>
-    <h2> Placas da intel </h2>
-<img src="../imagens/arc_a380.jpg" title="arc a380" class="img">
-<img src="../imagens/arc a750.jpg" title="arc a750" class="img">
-<img src="../imagens/arc b580.jpg" title="arc b580" class="img">
-<img src="../imagens/rx 7600.webp" title="rx 7600" class="img">
-<img src="../imagens/rx 580.jpg" title ="rx 580" class="img">
-<img src="../imagens/rx 6600.jpg" title="rx 6600" class="img">
-<img src="../imagens/rtx 3060.jpg" title="rtx 3060" class="img">
-<img src="../imagens/rtx 4060.jpg" title="rtx 4060" class="img">
-<img src="../imagens/rtx 5090.jpg" title="rtx 3060" class="img">
 
-    <center>
-        <a href="../index.html" class="voltar">Voltar para a página inicial</a>
-    </center>
+<nav>
+    <a class="nav-logo" href="../index.html">GPU <span>Guide</span></a>
+
+    <ul class="nav-links">
+        <li><a href="../index.html#sobre">Sobre</a></li>
+        <li><a href="../index.html#termos">Termos</a></li>
+        <li><a class="nvidia" href="../index.html#nvidia">NVIDIA</a></li>
+        <li><a class="amd"    href="../index.html#amd">AMD</a></li>
+        <li><a class="intel"  href="../index.html#intel">Intel</a></li>
+        <li><a href="contato.html">Contato</a></li>
+        <li><a href="fotos.html" style="color: var(--text);">Galeria</a></li>
+    </ul>
+
+    <button class="hamburger" id="hamburger" aria-label="Abrir menu">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+    <a href="../index.html#sobre"  onclick="closeMenu()">Sobre</a>
+    <a href="../index.html#termos" onclick="closeMenu()">Termos</a>
+    <div class="separator"></div>
+    <a class="nvidia" href="../index.html#nvidia" onclick="closeMenu()">NVIDIA</a>
+    <a class="amd"    href="../index.html#amd"    onclick="closeMenu()">AMD</a>
+    <a class="intel"  href="../index.html#intel"  onclick="closeMenu()">Intel</a>
+    <div class="separator"></div>
+    <a href="contato.html">Contato</a>
+    <a href="fotos.html" style="color: var(--text);">Galeria</a>
+</div>
+
+<div class="page-header">
+    <h1><span>Galeria</span> de Placas</h1>
+    <p>Veja imagens das placas de vídeo mais populares do mercado</p>
+</div>
+
+<div class="container">
+
+    <div class="filter-tabs">
+        <button class="filter-all active" data-filter="all">🎯 Todas</button>
+        <button class="filter-nvidia" data-filter="nvidia">🟢 NVIDIA</button>
+        <button class="filter-amd" data-filter="amd">🔴 AMD</button>
+        <button class="filter-intel" data-filter="intel">🔵 Intel</button>
+    </div>
+
+    <div class="counter">
+        Mostrando <strong id="visibleCount">9</strong> placas
+    </div>
+
+    <div class="gallery-grid" id="galleryGrid">
+
+        <div class="gallery-item" data-brand="intel">
+            <img src="../imagens/arc_a380.jpg" alt="Intel Arc A380" loading="lazy">
+            <div class="info">
+                <span class="name">Intel Arc A380</span>
+                <span class="badge badge-intel">Intel</span>
+            </div>
+        </div>
+
+        <div class="gallery-item" data-brand="intel">
+            <img src="../imagens/arc a750.jpg" alt="Intel Arc A750" loading="lazy">
+            <div class="info">
+                <span class="name">Intel Arc A750</span>
+                <span class="badge badge-intel">Intel</span>
+            </div>
+        </div>
+
+        <div class="gallery-item" data-brand="intel">
+            <img src="../imagens/arc b580.jpg" alt="Intel Arc B580" loading="lazy">
+            <div class="info">
+                <span class="name">Intel Arc B580</span>
+                <span class="badge badge-intel">Intel</span>
+            </div>
+        </div>
+
+        <div class="gallery-item" data-brand="amd">
+            <img src="../imagens/rx 7600.webp" alt="AMD RX Radeon 7600" loading="lazy">
+            <div class="info">
+                <span class="name">RX Radeon 7600</span>
+                <span class="badge badge-amd">AMD</span>
+            </div>
+        </div>
+
+        <div class="gallery-item" data-brand="amd">
+            <img src="../imagens/rx 580.jpg" alt="AMD RX 580" loading="lazy">
+            <div class="info">
+                <span class="name">RX 580</span>
+                <span class="badge badge-amd">AMD</span>
+            </div>
+        </div>
+
+        <div class="gallery-item" data-brand="amd">
+            <img src="../imagens/rx 6600.jpg" alt="AMD RX 6600" loading="lazy">
+            <div class="info">
+                <span class="name">RX 6600</span>
+                <span class="badge badge-amd">AMD</span>
+            </div>
+        </div>
+
+        <div class="gallery-item" data-brand="nvidia">
+            <img src="../imagens/rtx 3060.jpg" alt="NVIDIA RTX 3060" loading="lazy">
+            <div class="info">
+                <span class="name">RTX 3060</span>
+                <span class="badge badge-nvidia">NVIDIA</span>
+            </div>
+        </div>
+
+        <div class="gallery-item" data-brand="nvidia">
+            <img src="../imagens/rtx 4060.jpg" alt="NVIDIA RTX 4060" loading="lazy">
+            <div class="info">
+                <span class="name">RTX 4060</span>
+                <span class="badge badge-nvidia">NVIDIA</span>
+            </div>
+        </div>
+
+        <div class="gallery-item" data-brand="nvidia">
+            <img src="../imagens/rtx 5090.jpg" alt="NVIDIA RTX 5090" loading="lazy">
+            <div class="info">
+                <span class="name">RTX 5090</span>
+                <span class="badge badge-nvidia">NVIDIA</span>
+            </div>
+        </div>
+
+        <div class="no-results" id="noResults">
+            Nenhuma placa encontrada para esta marca.
+        </div>
+
+    </div>
+
+    <a href="../index.html" class="back-link">Voltar para a página inicial</a>
+
+</div>
+
+<footer>
+    <div>
+        <a href="contato.html" target="_blank">Contato</a>
+        <a href="fotos.html"   target="_blank" style="color: var(--text);">Galeria</a>
+        <a href="../index.html"   target="_blank">Início</a>
+    </div>
+    <div style="margin-top: 0.5rem;">
+        Guia informativo · Pesquise sempre antes de comprar
+    </div>
+    <div>Aluno: João Fernando Pinheiro Fígaro &nbsp;·&nbsp; RA: 5167632</div>
+</footer>
+
+<script>
+    const btn  = document.getElementById('hamburger');
+    const menu = document.getElementById('mobileMenu');
+
+    btn.addEventListener('click', () => {
+        const open = menu.classList.toggle('open');
+        btn.classList.toggle('open', open);
+        btn.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
+    });
+
+    function closeMenu() {
+        menu.classList.remove('open');
+        btn.classList.remove('open');
+        btn.setAttribute('aria-label', 'Abrir menu');
+    }
+
+    document.addEventListener('click', e => {
+        if (!btn.contains(e.target) && !menu.contains(e.target)) closeMenu();
+    });
+
+    const filterButtons = document.querySelectorAll('.filter-tabs button');
+    const galleryItems = document.querySelectorAll('.gallery-item');
+    const noResults = document.getElementById('noResults');
+    const visibleCount = document.getElementById('visibleCount');
+
+    filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            filterButtons.forEach(b => b.classList.remove('active'));
+            button.classList.add('active');
+
+            const filter = button.dataset.filter;
+            let visible = 0;
+
+            galleryItems.forEach(item => {
+                const brand = item.dataset.brand;
+                if (filter === 'all' || brand === filter) {
+                    item.style.display = 'block';
+                    visible++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            visibleCount.textContent = visible;
+
+            if (visible === 0) {
+                noResults.classList.add('show');
+            } else {
+                noResults.classList.remove('show');
+            }
+        });
+    });
+</script>
 
 </body>
 </html>
